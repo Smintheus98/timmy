@@ -7,14 +7,13 @@ let
   datafile = dataPath / "timesheet.csv"
 
 proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
-  var strs = newStringStream("")
+  var sstr = newStringStream("")
 
   case grouping:
     of ByDay:
       let lower = if n == 0: 0 else: sheet.len-n
-      for workDay in sheet[lower..^1]:
-        strs.write(workDay[0].date.dateToStr)
-        discard
+      for day in sheet[lower..^1]:
+        sstr.write($day)
     of ByWeek: discard
     of ByMonth: discard
 
@@ -24,14 +23,15 @@ proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
     discard
 
 
+  ## ByDay:
   # <date>:  <time-in> - <time-out> [,
   #          <time-in> - <time-out> [, ]] <hours>
   #
-  # week:
+  ## ByWeek:
   # <date>:  <time-in> - <time-out>  <hours>
   # <date>:  <time-in> - <time-out>  <hours>
   # <date>:  <time-in> - <time-out>  <hours>
-  # ==> Calender week: <cw>, hours: <sum hours>
+  # ==> Week <cw>: <sum hours>
   # <date>:  <time-in> - <time-out>  <hours>
   # ==> Calender week: <cw>, hours: <sum hours>, remaining: <rem hours>
   #

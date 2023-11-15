@@ -18,6 +18,7 @@ converter stampToRow(stamp: Stamp): CsvRow =
   ]
 
 proc loadData*(filename: string): TimeSheet =
+  # TODO: handle missing information better (day not done, forgot to log-in/out, etc.)
   var
     sheet: TimeSheet
     parser: CsvParser
@@ -26,9 +27,14 @@ proc loadData*(filename: string): TimeSheet =
     while parser.readRow():
       let stamp = parser.row.Stamp
       if sheet.len == 0 or stamp.date != sheet[^1][0].date:
+        if sheet[^1].len mod 2 != 0:
+          raise IOError.newException("Non-matching stamps")
         sheet.add @[stamp]
+      else:
+        sheet[^1].add stamp
   except:
     stderr.writeLine(fmt"Error while loading data from '{filename}'")
+    stderr.writeLine(getCurrentExceptionMsg())
     QuitFailure.quit
   finally:
     parser.close()
@@ -44,6 +50,7 @@ proc saveData*(sheet: TimeSheet; filename: string; writeAll = false) =
           file.writeLine(stamp.CsvRow)
   except:
     stderr.writeLine(fmt"Error while writing data to '{filename}'")
+    stderr.writeLine(getCurrentExceptionMsg())
     QuitFailure.quit
   finally:
     file.close()
