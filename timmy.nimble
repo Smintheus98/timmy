@@ -11,4 +11,5 @@ bin           = @["timmy"]
 
 # Dependencies
 
-requires "nim >= 2.0.0"
+requires "nim >= 1.6.14"
+requires "zero_functional"
