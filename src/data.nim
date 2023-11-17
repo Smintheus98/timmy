@@ -27,8 +27,6 @@ proc loadData*(filename: string): TimeSheet =
     while parser.readRow():
       let stamp = parser.row.Stamp
       if sheet.len == 0 or stamp.date != sheet[^1][0].date:
-        if sheet[^1].len mod 2 != 0:
-          raise IOError.newException("Non-matching stamps")
         sheet.add @[stamp]
       else:
         sheet[^1].add stamp
@@ -38,6 +36,7 @@ proc loadData*(filename: string): TimeSheet =
     QuitFailure.quit
   finally:
     parser.close()
+  return sheet
 
 proc saveData*(sheet: TimeSheet; filename: string; writeAll = false) =
   var file: File
