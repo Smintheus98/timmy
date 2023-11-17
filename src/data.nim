@@ -2,20 +2,9 @@ import std / [ times, parsecsv, strutils, strformat ]
 import global
 
 
-converter rowToStamp(row: CsvRow): Stamp =
-  Stamp(
-    action: parseEnum[Action](row[0]),
-    date: row[1].strToDate,
-    time: row[2].strToTime,
-    newEntry: false
-  )
+converter toStamp(row: CsvRow): Stamp = initStamp(row[0], row[1], row[2], false)
+converter toRow(stamp: Stamp): CsvRow = @$stamp
 
-converter stampToRow(stamp: Stamp): CsvRow =
-  @[
-    stamp.action.`$`,
-    stamp.date.dateToStr,
-    stamp.time.timeToStr
-  ]
 
 proc loadData*(filename: string): TimeSheet =
   # TODO: handle missing information better (day not done, forgot to log-in/out, etc.)
@@ -25,7 +14,7 @@ proc loadData*(filename: string): TimeSheet =
   try:
     parser.open(filename, skipInitialSpace = true)
     while parser.readRow():
-      let stamp = parser.row.Stamp
+      let stamp = parser.row.toStamp
       if sheet.len == 0 or stamp.date != sheet[^1][0].date:
         sheet.add @[stamp]
       else:
@@ -38,6 +27,7 @@ proc loadData*(filename: string): TimeSheet =
     parser.close()
   return sheet
 
+
 proc saveData*(sheet: TimeSheet; filename: string; writeAll = false) =
   var file: File
   let fileMode = if writeAll: fmWrite else: fmAppend
@@ -46,7 +36,7 @@ proc saveData*(sheet: TimeSheet; filename: string; writeAll = false) =
     for workday in sheet:
       for stamp in workday:
         if writeAll or stamp.newEntry:
-          file.writeLine(stamp.CsvRow)
+          file.writeLine(stamp.toRow)
   except:
     stderr.writeLine(fmt"Error while writing data to '{filename}'")
     stderr.writeLine(getCurrentExceptionMsg())

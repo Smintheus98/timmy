@@ -3,21 +3,51 @@ import zero_functional
 
 export times
 
+const 
+  weeklyHours = 13  # TODO: make variable
+
+#=======================================
+#   date/time-string conversion
+#=======================================
 const
   dateFormat = initTimeFormat("dd-MM-yyyy")
   timeFormat = initTimeFormat("HH:mm")
-  weeklyHours = 13  # TODO: make variable
+
+proc strToDate(str: string): DateTime =  str.parse(dateFormat)
+proc dateToStr(date: DateTime): string = date.format(dateFormat)
+proc strToTime(str: string): DateTime =  str.parse(timeFormat)
+proc timeToStr(time: DateTime): string = time.format(timeFormat)
+
+#=======================================
+#         Action Type
+#=======================================
+type
+  Action* = enum
+    In Out
+
+type Stamp* = object
+  action*: Action
+  date*: DateTime
+  time*: DateTime
+  newEntry*: bool
+
+proc initStamp*(action: Action; date, time: string, newEntry = false): Stamp =
+  Stamp(action: action, date: date.strToDate, time: time.strToTime, newEntry: newEntry)
+
+proc initStamp*(action, date, time: string, newEntry = false): Stamp =
+  initStamp(parseEnum[Action] action, date, time, newEntry)
+
+proc `@$`*(stamp: Stamp): seq[string] =
+  @[
+    stamp.action.`$`,
+    stamp.date.dateToStr,
+    stamp.time.timeToStr
+  ]
+
 
 type
   Grouping* = enum
     ByDay ByWeek ByMonth
-  Action* = enum
-    In Out
-  Stamp* = object
-    action*: Action
-    date*: DateTime
-    time*: DateTime
-    newEntry*: bool
   Workday* = seq[Stamp]
   WorkWeek* = object
     days*: seq[WorkDay]
@@ -28,10 +58,6 @@ type
   MonthSheet* = seq[WorkMonth]
 
 
-proc strToDate*(str: string): DateTime =  str.parse(dateFormat)
-proc dateToStr*(date: DateTime): string = date.format(dateFormat)
-proc strToTime*(str: string): DateTime =  str.parse(timeFormat)
-proc timeToStr*(time: DateTime): string = time.format(timeFormat)
 
 proc date(day: WorkDay): DateTime =
   day[0].date
