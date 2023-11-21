@@ -15,10 +15,10 @@ proc loadData*(filename: string): TimeSheet =
     parser.open(filename, skipInitialSpace = true)
     while parser.readRow():
       let stamp = parser.row.toStamp
-      if sheet.len == 0 or stamp.date != sheet[^1][0].date:
-        sheet.add @[stamp]
+      if sheet.len == 0 or stamp.date != sheet.last.date:
+        sheet.add initWorkday(stamp)
       else:
-        sheet[^1].add stamp
+        sheet.last.add stamp
   except:
     stderr.writeLine(fmt"Error while loading data from '{filename}'")
     stderr.writeLine(getCurrentExceptionMsg())

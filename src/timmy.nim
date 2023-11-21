@@ -11,13 +11,11 @@ proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
 
   case grouping:
     of ByDay:
-      let lower = if n == 0: 0 else: max(0, sheet.len-n)
-      for day in sheet[lower..^1]:
+      for day in sheet.last(n):
         sstr.writeLine($day)
     of ByWeek:
       let weeks = sheet.parseWeeks
-      let lower = if n == 0: 0 else: max(0, weeks.len-n)
-      for week in weeks:
+      for week in weeks.last(n):
         sstr.writeLine($week)
     of ByMonth: discard
 
