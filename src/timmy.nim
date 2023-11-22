@@ -3,8 +3,8 @@ import global, data
 
 
 let
-  dataPath = getEnv("HOME") & "/.local/share/timmy"
-  datafile = dataPath / "timesheet.csv"
+  datapath = getEnv("HOME") & "/.local/share/timmy"
+  datafile = datapath / "timesheet.csv"
 
 proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
   var sstr = newStringStream("")
@@ -17,7 +17,10 @@ proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
       let weeks = sheet.parseWeeks
       for week in weeks.last(n):
         sstr.writeLine($week)
-    of ByMonth: discard
+    of ByMonth:
+      let months = sheet.parseMonths
+      for month in months.last(n):
+        sstr.writeLine($month)
 
   echo sstr.data
   ## ByDay:
@@ -36,8 +39,8 @@ proc show(sheet: TimeSheet; grouping: Grouping; n: Natural = 0) =
 proc main =
   try:
     if not datafile.fileExists():
-      if not dataPath.dirExists():
-        dataPath.createDir()
+      if not datapath.dirExists():
+        datapath.createDir()
       datafile.writeFile("")
   except:
     stderr.writeLine(fmt"Error while creating file '{datafile}'")
@@ -45,3 +48,6 @@ proc main =
 
 when isMainModule:
   main()
+else:
+  export main, show, datapath, datafile
+  export global, data

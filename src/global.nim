@@ -5,13 +5,24 @@ export times
 
 const 
   weeklyHours = 13  # TODO: make variable
+  locale = DefaultLocale  # TODO: use actual locale
 
+#=======================================
+#   Cutom Duration to string procedure
+#=======================================
+
+proc `$`*(d: Duration): string =
+  let
+    hours = d.inHours
+    remain = ((d.inMinutes - d.inHours * 60) / 60 * 100).int
+  fmt"{hours}.{remain:02}"
 
 #=======================================
 #   Type Definitions
 #=======================================
 type Index = Natural | BackwardsIndex
 type IsoWeekAndYear = tuple[isoweek: IsoWeekRange, isoyear: IsoYear]
+type MonthAndYear = tuple[month: Month, year: IsoYear]
 
 
 #=======================================
@@ -68,9 +79,9 @@ proc initWorkDay*(stamp: Stamp): WorkDay =
 
 # access procedures
 proc `[]`(day: WorkDay; i: Index): Stamp =
-  return day.stamps[i]
+  day.stamps[i]
 proc `[]`[U,V: Ordinal](day: WorkDay; slice: HSlice[U,V]): seq[Stamp] =
-  return day.stamps[slice]
+  day.stamps[slice]
 
 proc add*(day: var WorkDay; stamp: Stamp) =
   day.stamps.add stamp
@@ -89,6 +100,9 @@ proc date*(day: WorkDay): DateTime = day.stamps[0].date
 proc getIsoWeekAndYear(day: WorkDay): IsoWeekAndYear =
   day.date.getIsoWeekAndYear
 
+proc getMonthAndYear(day: WorkDay): MonthAndYear =
+  (month: day.date.month, year: day.getIsoWeekAndYear.isoyear)
+
 proc getWorkTime(day: WorkDay): Duration =
   # TODO: handle incomplete stamps properly!
   # TODO: add Lunch break
@@ -99,7 +113,7 @@ proc getWorkTime(day: WorkDay): Duration =
 proc `$`*(day: WorkDay): string =
   # TODO: handle not done days (incomplete stamps) properly!
   var sstr = newStringStream("")
-  sstr.write(DefaultLocale.ddd[day.date.weekday] & " ")
+  sstr.write(locale.ddd[day.date.weekday] & " ")
   sstr.write(day.date.dateToStr & ":  ")
   let indWidth = sstr.getPosition()
 
@@ -109,7 +123,7 @@ proc `$`*(day: WorkDay): string =
     sstr.write("\n" & indWidth.spaces)
     sstr.write(day[i].time.timeToStr & " - " & day[i+1].time.timeToStr)
 
-  sstr.write("  " & $day.getWorkTime)
+  sstr.write("  +" & $day.getWorkTime)
   return sstr.data
 
 
@@ -120,15 +134,8 @@ type WorkWeek* = object
   days: seq[WorkDay]
 
 # access procedures
-#proc `[]`(week: WorkWeek; i: Index): WorkDay =
-#  return week.days[i]
-#proc `[]`[U,V: Ordinal](week: WorkWeek; slice: HSlice[U,V]): seq[Stamp] =
-#  return week.days[slice]
-
 proc add(week: var WorkWeek; day: WorkDay) =
   week.days.add(day)
-
-#proc len(week: WorkWeek): int = week.days.len
 
 iterator items(week: WorkWeek): WorkDay =
   for day in week.days.items:
@@ -148,7 +155,7 @@ proc `$`*(week: WorkWeek): string =
   var sstr = newStringStream("")
   for day in week:
     sstr.writeLine($day)
-  sstr.write(fmt"==> Week {week.getCalendarWeek}: {week.getWorkTime}")
+  sstr.write(fmt"==> Week {week.getCalendarWeek}: +{week.getWorkTime}")
   return sstr.data
 
 
@@ -159,23 +166,27 @@ type WorkMonth* = object
   days: seq[WorkDay]
 
 # access procedures
-#proc `[]`(month: WorkMonth; i: Index): WorkDay =
-#  return month.days[i]
-#proc `[]`[U,V: Ordinal](month: WorkMonth; slice: HSlice[U,V]): seq[Stamp] =
-#  return month.days[slice]
+proc add(month: var WorkMonth; day: WorkDay) =
+  month.days.add day
 
-#proc add(month: var WorkMonth; day: WorkDay) =
-#  month.days.add(day)
-
-#proc len(month: WorkMonth): int = month.days.len
-
-#iterator items(month: WorkMonth): WorkDay =
-#  for day in month.days.items:
-#    yield day
+iterator items(month: WorkMonth): WorkDay =
+  for day in month.days.items:
+    yield day
 
 # data procedures
-#proc getWorkTime(month: WorkMonth): Duration =
-#  month.days --> map(getWorkTime).sum()
+proc getMonthAndYear(month: WorkMonth): MonthAndYear =
+  month.days[0].getMonthAndYear
+
+proc getWorkTime(month: WorkMonth): Duration =
+  month.days --> map(getWorkTime).sum()
+
+proc `$`*(month: WorkMonth): string =
+  var sstr = newStringStream("")
+  for day in month:
+    sstr.writeLine($day)
+  let (m, y) = month.getMonthAndYear
+  sstr.write(fmt"==> {locale.MMMM[m]} {y}: {month.getWorkTime}")
+  return sstr.data
 
 
 #=======================================
@@ -185,29 +196,22 @@ type TimeSheet* = object
   days: seq[Workday]
 
 # access procedures
-proc `[]`(sheet: TimeSheet; i: Index): WorkDay =
-  return sheet.days[i]
-proc `[]`(sheet: var TimeSheet; i: Index): var WorkDay =
-  return sheet.days[i]
-proc `[]`[U,V: Ordinal](sheet: TimeSheet; slice: HSlice[U,V]): seq[WorkDay] =
-  return sheet.days[slice]
-
 proc add*(sheet: var TimeSheet; day: WorkDay) =
   sheet.days.add day
 
 proc len*(sheet: TimeSheet): int = sheet.days.len
 
 proc last(sheet: TimeSheet): WorkDay =
-  return sheet[^1]
+  return sheet.days[^1]
 proc last*(sheet: var TimeSheet): var WorkDay =
-  return sheet[^1]
+  return sheet.days[^1]
 proc last*(sheet: TimeSheet; n: Natural): seq[WorkDay] =
   case n:
     of 0:
       return sheet.days
     else:
       let lower = max(0, sheet.len-n)
-      return sheet[lower..^1]
+      return sheet.days[lower..^1]
 
 iterator items*(sheet: TimeSheet): WorkDay =
   for day in sheet.days.items:
@@ -221,27 +225,20 @@ type WeekSheet* = object
   weeks: seq[WorkWeek]
 
 # access procedures
-proc `[]`(sheet: WeekSheet; i: Index): WorkWeek =
-  return sheet.weeks[i]
-proc `[]`(sheet: var WeekSheet; i: Index): var WorkWeek =
-  return sheet.weeks[i]
-proc `[]`[U,V: Ordinal](sheet: WeekSheet; slice: HSlice[U,V]): seq[WorkWeek] =
-  return sheet.weeks[slice]
-
 proc add(sheet: var WeekSheet; day: WorkWeek) =
   sheet.weeks.add(day)
 
 proc len(sheet: WeekSheet): int = sheet.weeks.len
 
 proc last*(sheet: var WeekSheet): var WorkWeek =
-  return sheet[^1]
+  return sheet.weeks[^1]
 proc last*(sheet: WeekSheet; n: Natural): seq[WorkWeek] =
   case n:
     of 0:
       return sheet.weeks
     else:
       let lower = max(0, sheet.len-n)
-      return sheet[lower..^1]
+      return sheet.weeks[lower..^1]
 
 iterator items*(sheet: WeekSheet): WorkWeek =
   for day in sheet.weeks.items:
@@ -260,6 +257,30 @@ proc parseWeeks*(sheet: TimeSheet): WeekSheet =
 #=======================================
 type MonthSheet* = object
   months: seq[WorkMonth]
+
+proc add(sheet: var MonthSheet; month: WorkMonth) =
+  sheet.months.add month
+
+proc len(sheet: MonthSheet): int = sheet.months.len
+
+proc last(sheet: MonthSheet): WorkMonth =
+  sheet.months[^1]
+proc last(sheet: var MonthSheet): var WorkMonth =
+  sheet.months[^1]
+proc last*(sheet: MonthSheet; n: Natural): seq[WorkMonth] =
+  case n:
+    of 0:
+      return sheet.months
+    else:
+      let lower = max(0, sheet.len-n)
+      return sheet.months[lower..^1]
+
+proc parseMonths*(sheet: TimeSheet): MonthSheet =
+  for day in sheet:
+    if result.len == 0 or day.getMonthAndYear != result.last.getMonthAndYear:
+      result.add WorkMonth(days: @[day])
+    else:
+      result.last.add day
 
 
 #=======================================
