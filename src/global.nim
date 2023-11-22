@@ -1,28 +1,33 @@
 import std / [ times, streams, strutils, strformat ]
 import zero_functional
-
-export times
-
-const 
-  weeklyHours = 13  # TODO: make variable
-  locale = DefaultLocale  # TODO: use actual locale
+import def
 
 #=======================================
-#   Cutom Duration to string procedure
+#   Enumeration Types
 #=======================================
+type
+  Action* = enum
+    In Out
+  Grouping* = enum
+    ByDay ByWeek ByMonth
 
-proc `$`*(d: Duration): string =
-  let
-    hours = d.inHours
-    remain = ((d.inMinutes - d.inHours * 60) / 60 * 100).int
-  fmt"{hours}.{remain:02}"
 
 #=======================================
-#   Type Definitions
+#   Simple Type Definitions
 #=======================================
 type Index = Natural | BackwardsIndex
 type IsoWeekAndYear = tuple[isoweek: IsoWeekRange, isoyear: IsoYear]
 type MonthAndYear = tuple[month: Month, year: IsoYear]
+
+
+#=======================================
+#   Cutom Duration to string procedure
+#=======================================
+proc `$`(d: Duration): string =
+  let
+    hours = d.inHours
+    decimal = ((d.inMinutes - d.inHours * 60) / 60 * 100).int
+  fmt"{hours}.{decimal:02}"
 
 
 #=======================================
@@ -39,13 +44,6 @@ proc timeToStr(time: DateTime): string = time.format(timeFormat)
 
 
 #=======================================
-#   Action Enum
-#=======================================
-type Action* = enum
-  In Out
-
-
-#=======================================
 #   Stamp Type
 #=======================================
 type Stamp* = object
@@ -59,11 +57,13 @@ proc initStamp*(action: Action; date, time: string, newEntry = false): Stamp =
 proc initStamp*(action, date, time: string, newEntry = false): Stamp =
   initStamp(parseEnum[Action] action, date, time, newEntry)
 
-proc `@$`*(stamp: Stamp): seq[string] =
-  @[ $stamp.action, stamp.date.dateToStr, stamp.time.timeToStr ]
-
 proc date*(stamp: Stamp): DateTime = stamp.date
+proc dateStr*(stamp: Stamp): string = stamp.date.dateToStr
+proc timeStr*(stamp: Stamp): string = stamp.time.timeToStr
+
 proc newEntry*(stamp: Stamp): bool = stamp.newEntry
+proc `@$`*(stamp: Stamp): seq[string] =
+  @[ $stamp.action, stamp.dateStr, stamp.timeStr ]
 
 
 #=======================================
@@ -96,6 +96,7 @@ iterator items*(day: WorkDay): Stamp =
 
 # data procedures
 proc date*(day: WorkDay): DateTime = day.stamps[0].date
+proc dateStr*(day: WorkDay): string = day.stamps[0].dateStr
 
 proc getIsoWeekAndYear(day: WorkDay): IsoWeekAndYear =
   day.date.getIsoWeekAndYear
@@ -114,14 +115,14 @@ proc `$`*(day: WorkDay): string =
   # TODO: handle not done days (incomplete stamps) properly!
   var sstr = newStringStream("")
   sstr.write(locale.ddd[day.date.weekday] & " ")
-  sstr.write(day.date.dateToStr & ":  ")
+  sstr.write(day.dateStr & ":  ")
   let indWidth = sstr.getPosition()
 
-  sstr.write(day[0].time.timeToStr & " - " & day[1].time.timeToStr)
+  sstr.write(day[0].timeStr & " - " & day[1].timeStr)
 
   for i in countup(2, day.high, 2):
     sstr.write("\n" & indWidth.spaces)
-    sstr.write(day[i].time.timeToStr & " - " & day[i+1].time.timeToStr)
+    sstr.write(day[i].timeStr & " - " & day[i+1].timeStr)
 
   sstr.write("  +" & $day.getWorkTime)
   return sstr.data
@@ -151,11 +152,17 @@ proc getCalendarWeek(week: WorkWeek): Positive =
 proc getWorkTime(week: WorkWeek): Duration =
   week.days --> map(getWorkTime).sum()
 
-proc `$`*(week: WorkWeek): string =
+proc `$`*(week: WorkWeek; showRemaining: bool = false): string =
   var sstr = newStringStream("")
   for day in week:
     sstr.writeLine($day)
   sstr.write(fmt"==> Week {week.getCalendarWeek}: +{week.getWorkTime}")
+  if showRemaining:
+    let diff = abs(weeklyHours - week.getWorkTime)
+    if weeklyHours > week.getWorkTime:
+      sstr.write("   -" & $diff)
+    else:
+      sstr.write("   +" & $diff)
   return sstr.data
 
 
@@ -263,8 +270,6 @@ proc add(sheet: var MonthSheet; month: WorkMonth) =
 
 proc len(sheet: MonthSheet): int = sheet.months.len
 
-proc last(sheet: MonthSheet): WorkMonth =
-  sheet.months[^1]
 proc last(sheet: var MonthSheet): var WorkMonth =
   sheet.months[^1]
 proc last*(sheet: MonthSheet; n: Natural): seq[WorkMonth] =
@@ -284,13 +289,6 @@ proc parseMonths*(sheet: TimeSheet): MonthSheet =
 
 
 #=======================================
-#   Grouping Enum
-#=======================================
-type Grouping* = enum
-  ByDay ByWeek ByMonth
-
-
-#=======================================
 #   Validaion
 #=======================================
 proc validate(sheet: TimeSheet) =
@@ -300,7 +298,7 @@ proc validate(sheet: TimeSheet) =
 proc check(sheet: TimeSheet): tuple[valid: bool, msgs: string] =
   var msg = newStringStream("")
   for day in sheet:
-    let date = day.date.dateToStr
+    let date = day.dateStr
 
     if day.len mod 2 != 0 and day != sheet.last:
       msg.writeLine(fmt"Missing Stamp on day {date}")
