@@ -1,5 +1,5 @@
 import std / [ os, strformat, streams ]
-import global, data
+import types, data
 
 
 let

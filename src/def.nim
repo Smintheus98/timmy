@@ -1,6 +1,6 @@
 import std/times
 from std/os import getEnv
-from std/strutils import startswith
+from std/strutils import startswith, split
 
 const GermanLocale = DateTimeLocale(
   MMM: ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
@@ -10,12 +10,27 @@ const GermanLocale = DateTimeLocale(
 )
 
 let
-  weeklyHours* = initDuration(hours=13)  # TODO: make variable
-  LANG = "LANG".getEnv
+  weeklyHours* = initDuration(hours=13)  # TODO: make variable/setable
+  LANG = "LANG".getEnv.split('.')[0]
   locale* =
-      case LANG[0..1]:
-        of "de":
+      case LANG:
+        of "de_AT", "de_BE", "de_CH", "de_DE", "de_IT", "de_LI", "de_LU":
           GermanLocale
         else:
           DefaultLocale
+
+
+type
+  CliOption* = enum
+    `in` `out` get
+  CliGrouping* = enum
+    day week month
+  Operation* = object
+    case kind*: CliOption
+      of `in`, `out`:
+        time*: string
+        date*: string
+      of get:
+        grp*: CliGrouping
+        n*: Natural
 

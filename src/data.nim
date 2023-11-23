@@ -1,5 +1,5 @@
 import std / [ times, parsecsv, strutils, strformat ]
-import global
+import types
 
 
 converter toStamp(row: CsvRow): Stamp = initStamp(row[0], row[1], row[2], false)
