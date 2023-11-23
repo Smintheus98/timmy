@@ -25,7 +25,8 @@ type
     `in` `out` get
   CliGrouping* = enum
     day week month
-  Operation* = object
+  DefaultOperation* = object
+  StandardOperation* = object
     case kind*: CliOption
       of `in`, `out`:
         time*: string
@@ -33,4 +34,10 @@ type
       of get:
         grp*: CliGrouping
         n*: Natural
+  Operation* = StandardOperation | DefaultOperation
+
+proc initOperation*(): DefaultOperation =
+  DefaultOperation()
+proc initOperation*(kind: CliOption): StandardOperation =
+  StandardOperation(kind: kind)
 

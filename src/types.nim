@@ -56,6 +56,9 @@ proc initStamp*(action: Action; date, time: string, newEntry = false): Stamp =
   Stamp(action: action, date: date.strToDate, time: time.strToTime, newEntry: newEntry)
 proc initStamp*(action, date, time: string, newEntry = false): Stamp =
   initStamp(parseEnum[Action] action, date, time, newEntry)
+proc initStamp*(op: Operation): Stamp =
+  # TODO
+  discard
 
 proc date*(stamp: Stamp): DateTime = stamp.date
 proc dateStr*(stamp: Stamp): string = stamp.date.dateToStr
